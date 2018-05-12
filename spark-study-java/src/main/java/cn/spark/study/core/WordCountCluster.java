@@ -14,23 +14,18 @@ import org.apache.spark.api.java.function.VoidFunction;
 import scala.Tuple2;
 
 /**
- * 将java开发的wordcount程序部署到spark集群上运行
+ * run wordcount on cluster
  * @author Administrator
  *
  */
 public class WordCountCluster {
 	
 	public static void main(String[] args) {
-		// 如果要在spark集群上运行，需要修改的，只有两个地方
-		// 第一，将SparkConf的setMaster()方法给删掉，默认它自己会去连接
-		// 第二，我们针对的不是本地文件了，修改为hadoop hdfs上的真正的存储大数据的文件
-		
-		// 实际执行步骤：
-		// 1、将spark.txt文件上传到hdfs上去
-		// 2、使用我们最早在pom.xml里配置的maven插件，对spark工程进行打包
-		// 3、将打包后的spark工程jar包，上传到机器上执行
-		// 4、编写spark-submit脚本
-		// 5、执行spark-submit脚本，提交spark应用到集群执行
+		// 1、upload txt file to hdfs
+		// 2、pom.xml set maven，and make package 
+		// 3、upload package to cluster
+		// 4、spark-submit script
+		// 5、run spark-submit script in spark cluster
 		
 		SparkConf conf = new SparkConf()
 				.setAppName("WordCountCluster");  
