@@ -1,14 +1,14 @@
 package com.ibeifeng.sparkproject.constant;
 
 /**
- * 常量接口
+ * constant interface
  * @author Administrator
  *
  */
 public interface Constants {
 
 	/**
-	 * 项目配置相关的常量
+	 * project configuration constants
 	 */
 	String JDBC_DRIVER = "jdbc.driver";
 	String JDBC_DATASOURCE_SIZE = "jdbc.datasource.size";
@@ -26,7 +26,7 @@ public interface Constants {
 	String KAFKA_TOPICS = "kafka.topics";
 	
 	/**
-	 * Spark作业相关的常量
+	 * Spark configuration constants
 	 */
 	String SPARK_APP_NAME_SESSION = "UserVisitSessionAnalyzeSpark";
 	String SPARK_APP_NAME_PAGE = "PageOneStepConvertRateSpark";
@@ -65,7 +65,7 @@ public interface Constants {
 	String STEP_PERIOD_60 = "60";
 	
 	/**
-	 * 任务相关的常量
+	 * job related configuration constants
 	 */
 	String PARAM_START_DATE = "startDate";
 	String PARAM_END_DATE = "endDate";
