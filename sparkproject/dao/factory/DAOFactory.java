@@ -28,7 +28,7 @@ import com.ibeifeng.sparkproject.dao.impl.Top10CategoryDAOImpl;
 import com.ibeifeng.sparkproject.dao.impl.Top10SessionDAOImpl;
 
 /**
- * DAO工厂类
+ * DAO factory class
  * @author Administrator
  *
  */
