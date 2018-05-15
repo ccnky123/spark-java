@@ -8,7 +8,7 @@ import com.ibeifeng.sparkproject.domain.AreaTop3Product;
 import com.ibeifeng.sparkproject.jdbc.JDBCHelper;
 
 /**
- * 各区域top3热门商品DAO实现类
+ * different area top3 product
  * @author Administrator
  *
  */
