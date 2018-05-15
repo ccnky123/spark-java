@@ -60,36 +60,34 @@ import com.ibeifeng.sparkproject.util.StringUtils;
 import com.ibeifeng.sparkproject.util.ValidUtils;
 
 /**
- * 用户访问session分析Spark作业
+ * customers session analysis Spark job
  * 
- * 接收用户创建的分析任务，用户可能指定的条件如下：
+ * accept some conditions might be assigned：
  * 
- * 1、时间范围：起始日期~结束日期
- * 2、性别：男或女
- * 3、年龄范围
- * 4、职业：多选
- * 5、城市：多选
- * 6、搜索词：多个搜索词，只要某个session中的任何一个action搜索过指定的关键词，那么session就符合条件
- * 7、点击品类：多个品类，只要某个session中的任何一个action点击过某个品类，那么session就符合条件
- * （MockData中一共生产三个模拟表数据。对数据的筛选（清洗）的经典思路是，先对"user_visit_action"表以时间单位过滤一下，然后按照sessionid字段（尽量小）的粒度聚合，聚合后再join上"user_info"表，就可以过滤出1-5的一些信息）
+ * 1、Time range: start date ~ end date.
+ * 2、sex:man or women
+ * 3、Age range
+ * 4、Occupation: multiple choice
+ * 5、City: multiple choice
+ * 6、Multiple search terms, as long as any action in a session has searched for the specified keyword, the session is qualified.
+ * 7、Click on the category: multiple categories, as long as any action in the session has clicked on a category, the session is eligible.
+ * How does our spark job accept user-created tasks?
  * 
- * 我们的spark作业如何接受用户创建的任务？
+ * the J2EE platform inserts the task information into the MySQL task table after the request for the user creation task, and the task parameter is wrapped in JSON format in task_param.
+ * field
  * 
- * J2EE平台在接收用户创建任务的请求之后，会将任务信息插入MySQL的task表中，任务参数以JSON格式封装在task_param
- * 字段中
- * 
- * 接着J2EE平台会执行我们的spark-submit shell脚本，并将taskid作为参数传递给spark-submit shell脚本
- * spark-submit shell脚本，在执行时，是可以接收参数的，并且会将接收的参数，传递给Spark作业的main函数
- * 参数就封装在main函数的args数组中
- * 
- * 这是spark本身提供的特性
+* then the J2EE platform will execute our spark-submit shell script and pass taskid as a parameter to the spark-submit shell script.
+* spark-submit shell script, which can receive parameters when executed, and will pass the received parameters to the main function of the spark job.
+* the parameters are encapsulated in the args array of main functions.
+*
+* this is the feature that spark itself provides.
  * 
  * @author Administrator
  *
  */
 
 /**
- * 作用：用于抑制编译器产生警告信息。
+ * Action: used to suppress a compiler to produce a warning message.
  * @author geo
  *
  */
@@ -97,10 +95,10 @@ import com.ibeifeng.sparkproject.util.ValidUtils;
 public class user_visit_session {
 	
 	public static void main(String[] args) {
-		// 构建Spark上下文
-		//设置spark作业初始化信息
+		// build the Spark context.
+// set spark job initialization information.
 		SparkConf conf = new SparkConf()
-				//设置常量接口constants,提高后期维护方便性
+				// set constant interface constants to improve the convenience of later maintenance.
 				.setAppName(Constants.SPARK_APP_NAME_SESSION)
 //				.set("spark.default.parallelism", "100")
 				.set("spark.storage.memoryFraction", "0.5")  
@@ -117,92 +115,74 @@ public class user_visit_session {
 		SparkUtils.setMaster(conf); 
 		
 		/**
-		 * 比如，获取top10热门品类功能中，二次排序，自定义了一个Key
-		 * 那个key是需要在进行shuffle的时候，进行网络传输的，因此也是要求实现序列化的
-		 * 启用Kryo机制以后，就会用Kryo去序列化和反序列化CategorySortKey
-		 * 所以这里要求，为了获取最佳性能，注册一下我们自定义的类
-		 */
+		* for example, to get the top10 popular category function, the second order, customize a Key.
+		* that key needs to be transmitted over the network during the shuffle, so it is also required to be serialized.
+		* when you enable the Kryo mechanism, you will use Kryo to serialize and deserialize CategorySortKey.
+		* so here, to get the best performance, register our custom classes.
+		* /
 		
 		JavaSparkContext sc = new JavaSparkContext(conf);
 //		sc.checkpointFile("hdfs://");
-		//从JavaSparkContext中取出其sc对应的那个sc？
 		SQLContext sqlContext = getSQLContext(sc.sc());
 		
-		// 生成模拟测试数据
+		// generate simulated test data.
 		SparkUtils.mockData(sc, sqlContext);  
 		
-		// 创建需要使用的DAO组件
-		//ITaskDAO(接口)根据主键查询任务,getTaskDAO()返回ITaskDAO(接口)的实现类（为什么这里要获取数据库instance要用单例设计模式？因为，当一个数据操作完后才进行下一个操作（相当于是加了锁），否则数据没操作完，有多个实例同时操作数据，会造成数据脏）
+		// create DAO components that need to be used.
 		ITaskDAO taskDAO = DAOFactory.getTaskDAO();
 		
-		// 首先得查询出来指定的任务，并获取任务的查询参数
-//		接着J2EE平台会执行我们的spark-submit shell脚本，并将taskid作为参数传递给spark-submit shell脚本
-//		 * spark-submit shell脚本，在执行时，是可以接收参数的，并且会将接收的参数，传递给Spark作业的main函数
-//		 * 参数就封装在main函数的args数组中
-//		 * 
-//		 * 这是spark本身提供的特性
-		//从命令行参数中提取任务id(main函数入口设置String args[])
+		// first you have to query the specified task and get the query parameters for the task.
+// then the J2EE platform will execute our spark-submit shell script and pass taskid as a parameter to the spark-submit shell script.
+// * spark-submit shell script, which can receive parameters when executed, and will pass the received parameters to the main function of the spark job.
+// * parameters are encapsulated in the args array of main functions.
+/ / *
+// * this is the feature that spark itself provides.
+// extract the task id from the command line argument (the main function entry set String args[])
 		long taskid = ParamUtils.getTaskIdFromArgs(args, Constants.SPARK_LOCAL_TASKID_SESSION);
-		//根据taskid查出来对应的任务信息
+		// the corresponding task information is detected according to taskid.
 		Task task = taskDAO.findById(taskid);
 		if(task == null) {
 			System.out.println(new Date() + ": cannot find this task with id [" + taskid + "].");  
 			return;
 		}
 		
-		//把task.getTaskParam()获取到的值序列化成JSONObject（taskParam是封装了命令行参数的对象。到这一步，就相当于拿到了用户通过J2EE平台提交的参数）
 		JSONObject taskParam = JSONObject.parseObject(task.getTaskParam());
 		
-		// 如果要进行session粒度的数据聚合
-		/**
-		 * actionRDD，就是一个公共RDD
-		 * 第一，要用ationRDD，获取到一个公共的sessionid为key的PairRDD
-		 * 第二，actionRDD，用在了session聚合环节里面
-		 * 
-		 * sessionid为key的PairRDD，是确定了，在后面要多次使用的
-		 * 1、与通过筛选的sessionid进行join，获取通过筛选的session的明细数据
-		 * 2、将这个RDD，直接传入aggregateBySession方法，进行session聚合统计
-		 * 
-		 * 重构完以后，actionRDD，就只在最开始，使用一次，用来生成以sessionid为key的RDD
-		 * 
-		 */
-		// 首先要从user_visit_action表中，查询出来指定日期范围内的行为数据(spark core/sql/stream其实也是清洗数据用的)
+		/ if you want to do session granularity data aggregation.
+/**
+* actionRDD is a common RDD.
+* first, use ationRDD to get a PairRDD with a common sessionid as key.
+* second, actionRDD is used in session aggregation.
+*
+* sessionid is key's PairRDD, which is determined, and is used multiple times in the back.
+* 1. Join with the filtered sessionid to obtain the detail data of the session filtered.
+* 2. Pass this RDD directly into the aggregateBySession method to perform session aggregation statistics.
+*
+* after refactoring, actionRDD is used only once, once, to generate RDD with sessionid as key.
+*
+*/
+// first, you need to query the behavior data within the specified date range from the user_visit_action 
 		JavaRDD<Row> actionRDD = SparkUtils.getActionRDDByDateRange(sqlContext, taskParam);
 		//通过用日期参数对user_visit_action进行初步过滤后，就可以进行聚合操作了
 		JavaPairRDD<String, Row> sessionid2actionRDD = getSessionid2ActionRDD(actionRDD);
 		
-		/**
-		 * 持久化，很简单，就是对RDD调用persist()方法，并传入一个持久化级别
-		 * 
-		 * 如果是persist(StorageLevel.MEMORY_ONLY())，纯内存，无序列化，那么就可以用cache()方法来替代
-		 * StorageLevel.MEMORY_ONLY_SER()，第二选择
-		 * StorageLevel.MEMORY_AND_DISK()，第三选择
-		 * StorageLevel.MEMORY_AND_DISK_SER()，第四选择
-		 * StorageLevel.DISK_ONLY()，第五选择
-		 * 
-		 * 如果内存充足，要使用双副本高可靠机制
-		 * 选择后缀带_2的策略
-		 * StorageLevel.MEMORY_ONLY_2()
-		 * 
-		 */
+		
 		sessionid2actionRDD = sessionid2actionRDD.persist(StorageLevel.MEMORY_ONLY());
 //		sessionid2actionRDD.checkpoint();
 		
-		// 首先，可以将行为数据，按照session_id进行groupByKey分组
-		// 此时的数据的粒度就是session粒度了，然后呢，可以将session粒度的数据
-		// 与用户信息数据，进行join（"user_info"表和"user_visit_action"表都有user_id字段，通过这个字段来join）
-		// 然后就可以获取到session粒度的数据，同时呢，数据里面还包含了session对应的user的信息
-		// 到这里为止，获取的数据是<sessionid,(sessionid,searchKeywords,clickCategoryIds,age,professional,city,sex)> ，拿到这个数据我们又可以进行下一步的继续过滤
+		// first, you can group the behavior data in groupByKey according to session_id.
+// the granularity of the data at this point is the session granularity, and then the session granularity data can be obtained.
+// with user information data, join ("user_info" table and "user_visit_action" table have user_id fields, and join through this field)
+// then you can get the data of session granularity, and the data also contains information about the user of the session.
+// until here, access to data is < sessionid, (sessionid searchKeywords, clickCategoryIds, age, professional, city, sex) >, to get the data we can continue to filter for the next step
 		JavaPairRDD<String, String> sessionid2AggrInfoRDD = 
 				aggregateBySession(sc, sqlContext, sessionid2actionRDD);
 		
-		// 接着，就要针对session粒度的聚合数据，按照使用者指定的筛选参数进行数据过滤
-		// 相当于我们自己编写的算子，是要访问外面的任务参数对象的
-		// 所以，大家记得我们之前说的，匿名内部类（算子函数），访问外部对象，是要给外部对象使用final修饰的
-		
-		// 重构，同时进行过滤和统计
-		//没有完善的spark java api，accumulator（）方法都不知道参数含义。第一个参数是初始值，第二个参数应该是累加内容？
-		//Accumulator<String>累加器，<String>的累加器要操作的类型。sc.accumulator("", new SessionAggrStatAccumulator())，这里要累加的逻辑是我们自定义的，一开始初始化为空""，new SessionAggrStatAccumulator()就是我们自己定义累加器要计算的逻辑
+		// then, the data is filtered according to the filtered parameters specified by the user for the aggregate data of session granularity.
+// the operator that we write ourselves is to access the external task parameter object.
+// so, you remember what we said earlier, anonymous inner classes (operator functions), accessing external objects, using final modification for external objects.
+// refactoring, filtering and statistics at the same time.
+// there is no perfect spark Java API, and the accumulator () method does not know the parameter meaning.The first parameter is the initial value, and the second argument should be cumulative. Okay?
 		Accumulator<String> sessionAggrStatAccumulator = sc.accumulator(
 				"", new SessionAggrStatAccumulator());
 		
@@ -210,119 +190,115 @@ public class user_visit_session {
 				sessionid2AggrInfoRDD, taskParam, sessionAggrStatAccumulator);
 		filteredSessionid2AggrInfoRDD = filteredSessionid2AggrInfoRDD.persist(StorageLevel.MEMORY_ONLY());
 		
-		// 生成公共的RDD：通过筛选条件的session的访问明细数据
-		
-		/**
-		 * 重构：sessionid2detailRDD，就是代表了通过筛选的session对应的访问明细数据
-		 */
+	// generate public RDD: access detail data by filtering the conditions of session.
+/**
+* refactoring: sessionid2detailRDD represents the access detail data that corresponds to the selected session.
+*/
 		JavaPairRDD<String, Row> sessionid2detailRDD = getSessionid2detailRDD(
 				filteredSessionid2AggrInfoRDD, sessionid2actionRDD);
 		sessionid2detailRDD = sessionid2detailRDD.persist(StorageLevel.MEMORY_ONLY());
 		
-		/**
-		 * 对于Accumulator这种分布式累加计算的变量的使用，有一个重要说明
-		 * 
-		 * 从Accumulator中，获取数据，插入数据库的时候，一定要，一定要，是在有某一个action操作以后
-		 * 再进行。。。
-		 * 
-		 * 如果没有action的话，那么整个程序根本不会运行。。。
-		 * 
-		 * 是不是在calculateAndPersisitAggrStat方法之后，运行一个action操作，比如count、take
-		 * 不对！！！
-		 * 
-		 * 必须把能够触发job执行的操作，放在最终写入MySQL方法之前
-		 * 
-		 * 计算出来的结果，在J2EE中，是怎么显示的，是用两张柱状图显示
-		 */
+	/**
+* there is an important explanation for the use of Accumulator, a distributed, cumulative calculation.
+*
+* from Accumulator, get the data, insert the database, must, must, is after a certain action operation.
+* again...
+*
+* if there is no action, the whole program will not run at all...
+*
+* if after calculateAndPersisitAggrStat method, run an action operation, such as the count, take
+* no!!!
+*
+* must be able to trigger job execution before finally writing to MySQL.
+*
+* the calculated results, in J2EE, are shown in two bar charts.
+*/
 		
 		randomExtractSession(sc, task.getTaskid(), 
 				filteredSessionid2AggrInfoRDD, sessionid2detailRDD);
 		
 		/**
-		 * 特别说明
-		 * 我们知道，要将上一个功能的session聚合统计数据获取到，就必须是在一个action操作触发job之后
-		 * 才能从Accumulator中获取数据，否则是获取不到数据的，因为没有job执行，Accumulator的值为空
-		 * 所以，我们在这里，将随机抽取的功能的实现代码，放在session聚合统计功能的最终计算和写库之前
-		 * 因为随机抽取功能中，有一个countByKey算子，是action操作，会触发job
-		 */
-		
-		// 计算出各个范围的session占比，并写入MySQL
+* special instructions
+* we know that to get the session aggregate statistics for the last function, it must be after an action action has triggered the job.
+* the data can be obtained from Accumulator, otherwise the data cannot be obtained, because there is no job execution, the Accumulator value is empty.
+* so, here, we'll put the implementation code of the randomly selected function before the final calculation and writing library of the session aggregation statistics function.
+* because of the random extraction function, there is a countByKey operator, which is action, which will trigger job.
+*/
+// calculate the session proportion of each range and write to MySQL.
 		calculateAndPersistAggrStat(sessionAggrStatAccumulator.value(),
 				task.getTaskid());
 		
 		/**
-		 * session聚合统计（统计出访问时长和访问步长，各个区间的session数量占总session数量的比例）
-		 * 
-		 * 如果不进行重构，直接来实现，思路：
-		 * 1、actionRDD，映射成<sessionid,Row>的格式
-		 * 2、按sessionid聚合，计算出每个session的访问时长和访问步长，生成一个新的RDD
-		 * 3、遍历新生成的RDD，将每个session的访问时长和访问步长，去更新自定义Accumulator中的对应的值
-		 * 4、使用自定义Accumulator中的统计值，去计算各个区间的比例
-		 * 5、将最后计算出来的结果，写入MySQL对应的表中
-		 * 
-		 * 普通实现思路的问题：
-		 * 1、为什么还要用actionRDD，去映射？其实我们之前在session聚合的时候，映射已经做过了。多此一举
-		 * 2、是不是一定要，为了session的聚合这个功能，单独去遍历一遍session？其实没有必要，已经有session数据
-		 * 		之前过滤session的时候，其实，就相当于，是在遍历session，那么这里就没有必要再过滤一遍了
-		 * 
-		 * 重构实现思路：
-		 * 1、不要去生成任何新的RDD（处理上亿的数据）
-		 * 2、不要去单独遍历一遍session的数据（处理上千万的数据）
-		 * 3、可以在进行session聚合的时候，就直接计算出来每个session的访问时长和访问步长
-		 * 4、在进行过滤的时候，本来就要遍历所有的聚合session信息，此时，就可以在某个session通过筛选条件后
-		 * 		将其访问时长和访问步长，累加到自定义的Accumulator上面去
-		 * 5、就是两种截然不同的思考方式，和实现方式，在面对上亿，上千万数据的时候，甚至可以节省时间长达
-		 * 		半个小时，或者数个小时
-		 * 
-		 * 开发Spark大型复杂项目的一些经验准则：
-		 * 1、尽量少生成RDD
-		 * 2、尽量少对RDD进行算子操作，如果有可能，尽量在一个算子里面，实现多个需要做的功能
-		 * 3、尽量少对RDD进行shuffle算子操作，比如groupByKey、reduceByKey、sortByKey（map、mapToPair）
-		 * 		shuffle操作，会导致大量的磁盘读写，严重降低性能（shuffle要用到带宽和磁盘的I/O）
-		 * 		有shuffle的算子，和没有shuffle的算子，甚至性能，会达到几十分钟，甚至数个小时的差别
-		 * 		有shfufle的算子，很容易导致数据倾斜，一旦数据倾斜，简直就是性能杀手（完整的解决方案）
-		 * 4、无论做什么功能，性能第一(从大数据开发的角度看是这样的，但是不同领域的考虑出发点不同)
-		 * 		在传统的J2EE或者.NET后者PHP，软件/系统/网站开发中，我认为是架构和可维护性，可扩展性的重要
-		 * 		程度，远远高于了性能，大量的分布式的架构，设计模式，代码的划分，类的划分（高并发网站除外）（通过架构可以解决大部分性能瓶颈问题？）
-		 * 
-		 * 		在大数据项目中，比如MapReduce、Hive、Spark、Storm，我认为性能的重要程度，远远大于一些代码
-		 * 		的规范，和设计模式，代码的划分，类的划分；大数据，大数据，最重要的，就是性能
-		 * 		主要就是因为大数据以及大数据项目的特点，决定了，大数据的程序和项目的速度，都比较慢
-		 * 		如果不优先考虑性能的话，会导致一个大数据处理程序运行时间长度数个小时，甚至数十个小时
-		 * 		此时，对于用户体验，简直就是一场灾难
-		 * 		
-		 * 		所以，推荐大数据项目，在开发和代码的架构中，优先考虑性能；其次考虑功能代码的划分、解耦合
-		 * 
-		 * 		我们如果采用第一种实现方案，那么其实就是代码划分（解耦合、可维护）优先，设计优先（这时每个算子单独完成特定功能，不会夹杂很多功能，但是把每个功能都单独写到不同算子里，计算机就要生产新的RDD和执行新的算子，影响性能）
-		 * 		如果采用第二种方案，那么其实就是性能优先
-		 * 
-		 * 		讲了这么多，其实大家不要以为我是在岔开话题，大家不要觉得项目的课程，就是单纯的项目本身以及
-		 * 		代码coding最重要，其实项目，我觉得，最重要的，除了技术本身和项目经验以外；非常重要的一点，就是
-		 * 		积累了，处理各种问题的经验
-		 * 
-		 */
+* session aggregation statistics (statistics of the length of visit and length of visit, the proportion of session in each interval to the total session number)
+*
+* if you do not refactor, you can directly implement the idea:
+* 1, actionRDD, map to <sessionid,Row> format.
+* 2. Aggregated by sessionid, calculated the duration and length of each session and generated a new RDD.
+* 3. Iterate through the newly generated RDD, and update the corresponding values of the custom Accumulator with each session's access length and access step length.
+* 4. Use the statistic values in the Accumulator to calculate the ratio of each interval.
+* 5. The final calculated result is written to the table of MySQL.
+*
+* common implementation thoughts:
+* 1, why use actionRDD to map?Actually, we've already done the mapping in session aggregation.redundant
+* 2. Do you have to go through the session alone for the purpose of gathering the session?There is no need to have session data.
+* when you filter session before, it's like, you're walking through the session, so there's no need to filter it again.
+*
+* reconstructing implementation ideas:
+* 1. Do not generate any new RDD (handling billions of data)
+* 2. Do not go through the session data alone (processing tens of millions of data)
+* 3. When the session is aggregated, the duration and length of each session are calculated directly.
+* 4. When filtering, it is necessary to iterate through all the aggregation session information, and then, after a session is filtered.
+* add the length of the visit and the access step to the custom Accumulator.
+* 5. It is two very different ways of thinking and implementation, which can even save time in the face of billions and millions of data.
+* half an hour, or hours.
+*
+* some guidelines for developing large and complex projects for Spark:
+* 1. Generate RDD as little as possible.
+* 2. Minimize the operator operation of RDD. If possible, try to implement multiple functions in an operator.
+* 3, as little as possible, the shuffle operator operation of RDD, such as groupByKey, reduceByKey, sortByKey (map, mapToPair)
+* shuffle, which can cause a large amount of disk reads and writes, severely reducing performance (the shuffle requires bandwidth and disk I/O).
+* there are shuffle operators, and no shuffle operators, or even performance, which can reach dozens of minutes or even hours of difference.
+* with the operator of shfufle, it is very easy to cause data skew. Once the data is tilted, it is a performance killer (complete solution).
+* 4. No matter what the function is, the performance is first (from the perspective of big data development, but different areas have different starting points)
+* in traditional J2EE or.net, PHP, software/system/web development, I think architecture and maintainability and scalability are important.
+* degree, far higher than the performance of a large number of distributed architecture, design patterns, code division, the division of classes (except high concurrency website) (through architecture can solve most of the performance bottleneck problem?)
+*
+* in big data projects, such as MapReduce, Hive, Spark and Storm, I think the performance is far more important than some code.
+* specification, design pattern, code division, class division;Big data, big data, and most importantly, performance.
+* mainly because of the big data and the characteristics of big data projects, the process of big data and the speed of the project are relatively slow.
+* if you don't give priority to performance, a big data handler can run for hours or even dozens of hours.
+* this is a disaster for the user experience.
+*
+* therefore, it is recommended that big data projects should give priority to performance in the framework of development and code.Second, consider the division and decoupling of functional code.
+*
+* if we adopt the first implementation scheme, then is code division (decoupling, maintainable) priority, design first, then perform specific functions separately for each operator, not with a lot of features, but each function separately to different operator, the computer will produce new RDD and implement a new operator, impact performance)
+* if the second option is adopted, performance is a priority.
+*
+* when we talk about this, we should not think that I am diverging from the topic, and we should not feel that the program is a simple project.
+* coding is the most important, in fact, the project, I think, the most important, besides the technology itself and the project experience;Very important point, yes.
+* accumulated experience in dealing with various problems.
+*
+*/
 		
-		// 获取top10热门品类
+		// get top10 favorite categories.
 		List<Tuple2<CategorySortKey, String>> top10CategoryList = 
 				getTop10Category(task.getTaskid(), sessionid2detailRDD);
-		
-		// 获取top10活跃session；JavaSparkContext sc = new JavaSparkContext(conf);为什么要传sc？（原话：将list生成RDD）
+		// get top10 active session;JavaSparkContext sc = new JavaSparkContext(conf);Why pass sc?(source: generate RDD from list)
 		getTop10Session(sc, task.getTaskid(), 
 				top10CategoryList, sessionid2detailRDD);
 		
-		// 关闭Spark上下文
+		
 		sc.close(); 
 	}
 
 	/**
-	 * 获取SQLContext
-	 * 如果是在本地测试环境的话，那么就生成SQLContext对象
-	 * 如果是在生产环境运行的话，那么就生成HiveContext对象
-	 * @param sc SparkContext
-	 * @return SQLContext
-	 */
+* get SQLContext
+* the SQLContext object is generated if it is a local test environment.
+* the HiveContext object is generated if it is running in a production environment.
+* @ param sc SparkContext
+* @ return SQLContext
+*/
 	
-	//private只能在同一个类中被访问，static可以通过类直接访问
 	private static SQLContext getSQLContext(SparkContext sc) {
 		boolean local = ConfigurationManager.getBoolean(Constants.SPARK_LOCAL);
 		if(local) {
@@ -333,10 +309,10 @@ public class user_visit_session {
 	}
 	
 	/**
-	 * 生成模拟数据（只有本地模式，才会去生成模拟数据）
-	 * @param sc 
-	 * @param sqlContext
-	 */
+* generate simulated data (only local mode will generate simulated data)
+* @ param sc
+* @ param sqlContext
+*/
 	private static void mockData(JavaSparkContext sc, SQLContext sqlContext) {
 		boolean local = ConfigurationManager.getBoolean(Constants.SPARK_LOCAL);
 		if(local) {
@@ -345,17 +321,17 @@ public class user_visit_session {
 	}
 	
 	/**
-	 * 获取指定日期范围内的用户访问行为数据
-	 * @param sqlContext SQLContext
-	 * @param taskParam 任务参数
-	 * @return 行为数据RDD
-	 */
+* gets the user access behavior data within the specified date range.
+* @ param sqlContext sqlContext
+* @param taskParam task parameter.
+* @return behavior data RDD.
+*/
 	private static JavaRDD<Row> getActionRDDByDateRange(
 			SQLContext sqlContext, JSONObject taskParam) {
-		//从taskParm里面拿到起始日期和结束日期（不出现hard code，引用Constants接口）
+	
 		String startDate = ParamUtils.getParam(taskParam, Constants.PARAM_START_DATE);
 		String endDate = ParamUtils.getParam(taskParam, Constants.PARAM_END_DATE);
-		//这里写sql的时候做了格式化处理，和只写一行的效果相同
+
 		String sql = 
 				"select * "
 				+ "from user_visit_action "
@@ -363,27 +339,26 @@ public class user_visit_session {
 				+ "and date<='" + endDate + "'";  
 //				+ "and session_id not in('','','')"
 		
-		//执行sql，这里相当于获取DataFrame
+		
 		DataFrame actionDF = sqlContext.sql(sql);
 		
 		/**
-		 * 这里就很有可能发生上面说的问题
-		 * 比如说，Spark SQl默认就给第一个stage设置了20个task，但是根据你的数据量以及算法的复杂度
-		 * 实际上，你需要1000个task去并行执行
-		 * 
-		 * 所以说，在这里，就可以对Spark SQL刚刚查询出来的RDD执行repartition重分区操作
-		 */
-		
-//		return actionDF.javaRDD().repartition(1000);
-		//通过用户指定的日期参数，到这里为止，已进行了初步的过滤
+* there is a good chance that this will happen.
+* for example, Spark SQl sets 20 tasks for the first stage by default, but based on your data size and the complexity of the algorithm.
+* in fact, you need 1000 tasks to execute in parallel.
+*
+* so, here, you can perform repartition repartition operations on the RDD that Spark SQL just queried.
+*/
+// return actionDF. JavaRDD (.) repartition (1000);
+// through the user-specified date parameters, the initial filtering has been done.
 		return actionDF.javaRDD();
 	}
 	
 	/**
-	 * 获取sessionid2到访问行为数据的映射的RDD(将user_visit_action表中的sessionid和它对应的row映射起来)
-	 * @param actionRDD 
-	 * @return
-	 */
+* get the RDD of sessionid2 to the mapping of access behavior data (map the sessionid in the user_visit_action table to its corresponding row)
+* @ param actionRDD
+* @ return
+*/
 	public static JavaPairRDD<String, Row> getSessionid2ActionRDD(JavaRDD<Row> actionRDD) {
 //		return actionRDD.mapToPair(new PairFunction<Row, String, Row>() {
 //
@@ -416,32 +391,24 @@ public class user_visit_session {
 		});
 	}
 	
-	/**
-	 * 对行为数据按session粒度进行聚合
-	 * @param actionRDD 行为数据RDD
-	 * @return session粒度聚合数据
-	 */
+	/* *
+* aggregate behavior data by session granularity.
+* @param actionRDD behavioral data RDD.
+* @return session granularity aggregation data.
+*/
 	private static JavaPairRDD<String, String> aggregateBySession(
 			JavaSparkContext sc,
 			SQLContext sqlContext, 
 			JavaPairRDD<String, Row> sessinoid2actionRDD) {
-		// 对行为数据按session粒度进行分组:一个sessionid对应一组row
 		JavaPairRDD<String, Iterable<Row>> sessionid2ActionsRDD = 
 				sessinoid2actionRDD.groupByKey();
-		
-		// 对每一个session分组进行聚合，将session中所有的搜索词和点击品类都聚合起来
-		// 到此为止，获取的数据格式，如下：<userid,partAggrInfo(sessionid,searchKeywords,clickCategoryIds)>
-		//视频中的代码中，userid2PartAggrInfoRDD本来是sessionid2PartAggrInfoRDD（怪不得找不到，被替换掉了，因为"user_info"表和"user_visit_action"表join后，就使用共同字段user_id就行了）
-		JavaPairRDD<Long, String> userid2PartAggrInfoRDD = sessionid2ActionsRDD.mapToPair(
+			JavaPairRDD<Long, String> userid2PartAggrInfoRDD = sessionid2ActionsRDD.mapToPair(
 				
-				//除了Long, String是传入参数（最后一个为传入参数），其余均为返回值
 				new PairFunction<Tuple2<String,Iterable<Row>>, Long, String>() {
 					
 					private static final long serialVersionUID = 1L;
 		
 					@Override
-					//这里用Iterator，因为一个session id聚合后多条记录（同一个session id的访问用户，当天访问多次，就产生多条访问记录了）
-					//call()方法的返回值Tuple2<Long, String>，对应传入参数Long, String；
 					public Tuple2<Long, String> call(Tuple2<String, Iterable<Row>> tuple)
 							throws Exception {
 						String sessionid = tuple._1;
@@ -450,44 +417,31 @@ public class user_visit_session {
 						StringBuffer searchKeywordsBuffer = new StringBuffer("");
 						StringBuffer clickCategoryIdsBuffer = new StringBuffer("");
 						
-						//定义一个userid，将sessionid对应起来（用它将sessioin和userid才能对应起来）
 						Long userid = null;
 						
-						// session的起始和结束时间;利用重构的思想，在遍历session的过程中，把访问时长和访问步长计算出来，避免新增RDD
 						Date startTime = null;
 						Date endTime = null;
-						// session的访问步长
+					
 						int stepLength = 0;
 						
-						// 遍历session所有的访问行为（所有row的集合）
 						while(iterator.hasNext()) {
-							// 提取每个访问行为的一行数据
 							Row row = iterator.next();
-							//要将sessionid和userid对应起来，为什么取一次userid就可以了？每个sessionid对应的userid应该是不同的啊？
-							//（方法一开始定义传入参数：Tuple2<String, Iterable<Row>> tuple，取出来的String sessionid = tuple._1和Iterator<Row> iterator = tuple._2.iterator()，是针对每个sessionid的Tuple2<String, Iterable<Row>>传入进来的）
-							//所以这里，后面再传进来不同的sessionid对应的Tuple2<String, Iterable<Row>>，就是可以实现不同的userid，而相同的userid则保留下来运算
-							//因为你想想看，大数据情况下，session有多条（MockData生成），怎么可能函数就传入一次参数的值就结束了呢？
 							if(userid == null) {
 								userid = row.getLong(1);
 							}
-							//获取每条数据的searchKeyword字段，MockData类中构造了"user_visit_action"表，每条记录的第6,第7个字段的内容
 							String searchKeyword = row.getString(5);
 							Long clickCategoryId = row.getLong(6);
 							
-							// 实际上这里要对数据说明一下
-							// 并不是每一行访问行为都有searchKeyword何clickCategoryId两个字段的（这个就要下到对业务的理解才能转换代码了）
-							// 其实，只有搜索行为，是有searchKeyword字段的
-							// 只有点击品类的行为，是有clickCategoryId字段的
-							// 所以，任何一行行为数据，都不可能两个字段都有，所以数据是可能出现null值的
+							// actually, here's the data description.
+// not every line of access has a searchKeyword clickCategoryId field (this is about to change the code to the business understanding)
+// in fact, only search behavior has a searchKeyword field.
+// there are clickCategoryId fields only if you click on the category behavior.
+// therefore, it is impossible for any line of behavior data to have two fields, so the data is likely to be null.
+// we decide whether to concatenate the search word or the category id into a string.
+// first, be satisfied: it cannot be null.
+// second, there is no search term or category id in the previous string.
 							
-							// 我们决定是否将搜索词或点击品类id拼接到字符串中去
-							// 首先要满足：不能是null值
-							// 其次，之前的字符串中还没有搜索词或者点击品类id
-							
-							//执行完下面两个嵌套if语句，相当于是把"user_visit_action"中，按searchKeyword字段和clickCategoryId字段聚合起来了
 							if(StringUtils.isNotEmpty(searchKeyword)) {
-								//如果searchKeywordsBuffer中不包含searchKeyword，那么就加进去，这样搜索词和点击品类就都加进去StringBuffer中（通过这样，把用户的搜索过的词和点击过的品类就收集起来，对应到他的sessionid上）
-								//把搜索词或点击品类统一用逗号分隔开
 								if(!searchKeywordsBuffer.toString().contains(searchKeyword)) {
 									searchKeywordsBuffer.append(searchKeyword + ",");  
 								}
@@ -499,9 +453,7 @@ public class user_visit_session {
 								}
 							}
 							
-							// 计算session开始和结束时间（下面这里的逻辑怎么理解？）（不要总想着代码的细节，你要先知道这段代码的功能和意图，然后才去看代码的具体实现！）
 							Date actionTime = DateUtils.parseTime(row.getString(4));
-							//每个sessionid的数据，一开始进来的第一条session，开始和结束时间是一样的；后续再传进来相同sessionid下的其他session，actionTime就不同了
 							if(startTime == null) {
 								startTime = actionTime;
 							}
@@ -516,47 +468,37 @@ public class user_visit_session {
 								endTime = actionTime;
 							}
 							
-							// 计算session访问步长。这里逻辑怎么考虑的？(每一条访问记录row，就是一次页面点击，就是总共点击了几次页面，产生几条row)
 							stepLength++;
 						}
 						
-						//规整数据，便于批量统一处理。searchKeywordsBuffer.toString()转成String类，StringUtils.trimComma（去除逗号，这个方法命名已经说得很清楚）
 						String searchKeywords = StringUtils.trimComma(searchKeywordsBuffer.toString());
 						String clickCategoryIds = StringUtils.trimComma(clickCategoryIdsBuffer.toString());
 						
-						// 计算session访问时长（秒）；这样就没有单独再进行一次算子，而是把计算浏览时间和访问步长的信息 的计算放到userid2PartAggrInfoRDD算子中
 						long visitLength = (endTime.getTime() - startTime.getTime()) / 1000; 
 						
-						// 大家思考一下
-						// 我们返回的数据格式，即使<sessionid,partAggrInfo>（部分聚合数据：partAggrInfo，因为这里只聚合了点击品类和搜索词）
-						// 但是，这一步聚合完了以后，其实，我们是还需要将每一行数据，跟对应的用户信息进行聚合
-						// 问题就来了，如果是跟用户信息进行聚合的话，那么key，就不应该是sessionid
-						// 就应该是userid，才能够跟<userid,Row>格式的用户信息进行聚合（但这里sessioinid和userid一样吗？）
-						// 如果我们这里直接返回<sessionid,partAggrInfo>，还得再做一次mapToPair算子
-						// 将RDD映射成<userid,partAggrInfo>的格式，那么就多此一举
-						
-						// 所以，我们这里其实可以直接，返回的数据格式，就是<userid,partAggrInfo>
-						// 然后跟用户信息join的时候，将partAggrInfo关联上userInfo
-						// 然后再直接将返回的Tuple的key设置成sessionid
-						// 最后的数据格式，还是<sessionid,fullAggrInfo>（这里fullAggrInfo就包括user_info的信息进来了）
-						
-						// 聚合数据，用什么样的格式进行拼接？（信息都拿到了，怎么拼接成一个string类返回）
-						// 我们这里统一定义，使用key=value|key=value（这时partAggrInfo包括sessionid，searchKeywords，clickCategoryIds，需要把这三个数据拼接起来）
-						String partAggrInfo = Constants.FIELD_SESSION_ID + "=" + sessionid + "|"
+						// think about it.
+// the format of the data we return, even if <sessionid,partAggrInfo> (partial aggregate data: partAggrInfo, because this is only the click category and search term)
+// however, when this step is done, we need to aggregate each row of data with the corresponding user information.
+// the problem is, if it is aggregated with user information, then key, it should not be sessionid.
+// it should be userid to be able to aggregate the user information from the <userid,Row> format (but is sessioinid and userid the same?)
+// if we return directly to <sessionid,partAggrInfo>, we have to do the mapToPair operator again.
+// map RDD to <userid,partAggrInfo> format, and so on.
+// so, we can actually go straight back to the data format, which is <userid,partAggrInfo>.
+// then the partAggrInfo is associated with the userInfo when you join the user information.
+// then set the key of the returned Tuple to sessionid.
+// the final data format, or <sessionid,fullAggrInfo> (here the fullAggrInfo includes the user_info information)
+// aggregate data, in what format?(the information is obtained, how to splice it into a string class)
+// we have a unified definition here, using key=value|key=value (at this point, partAggrInfo includes sessionid, searchKeywords, clickCategoryIds, which need to be spliced together)String partAggrInfo = Constants.FIELD_SESSION_ID + "=" + sessionid + "|"
 								+ Constants.FIELD_SEARCH_KEYWORDS + "=" + searchKeywords + "|"
 								+ Constants.FIELD_CLICK_CATEGORY_IDS + "=" + clickCategoryIds + "|"
 								+ Constants.FIELD_VISIT_LENGTH + "=" + visitLength + "|"
 								+ Constants.FIELD_STEP_LENGTH + "=" + stepLength + "|"
 								+ Constants.FIELD_START_TIME + "=" + DateUtils.formatTime(startTime);    
-						//这里return后，是把这个Tuple2<Long, String>(userid, partAggrInfo)返回给一开始定义的函数这里接收public Tuple2<Long, String> call(Tuple2<String, Iterable<Row>> tuple)，而不仅仅是跳出iterator的遍历，所以userid每次都能和sessionid对应起来？
-						//这里的返回是针对每一个userid的，多个userid当然会返回多次
 						return new Tuple2<Long, String>(userid, partAggrInfo);
 					}
 					
 				});
 		
-		// 查询所有用户数据，并映射成<userid,Row>的格式（在通过之前的(userid, partAggrInfo)join上用户表，就可以得到完整的用户数据）
-		//user_info这个表在MockData类里有创建，在mysql的spark_project库里没有，什么关系？不懂
 		String sql = "select * from user_info";  
 		JavaRDD<Row> userInfoRDD = sqlContext.sql(sql).javaRDD();
 		//JavaPairRDD<Long, Row> userid2InfoRDD，long为userid，Row为对应用户数据
