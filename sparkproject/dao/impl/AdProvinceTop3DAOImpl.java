@@ -8,7 +8,7 @@ import com.ibeifeng.sparkproject.domain.AdProvinceTop3;
 import com.ibeifeng.sparkproject.jdbc.JDBCHelper;
 
 /**
- * 各省份top3热门广告DAO实现类
+ * top3 advertisements amoung all province implementation class
  * @author Administrator
  *
  */
@@ -18,7 +18,7 @@ public class AdProvinceTop3DAOImpl implements IAdProvinceTop3DAO {
 	public void updateBatch(List<AdProvinceTop3> adProvinceTop3s) {
 		JDBCHelper jdbcHelper = JDBCHelper.getInstance();
 		
-		// 先做一次去重（date_province）
+		// distinct（date_province）
 		List<String> dateProvinces = new ArrayList<String>();
 		
 		for(AdProvinceTop3 adProvinceTop3 : adProvinceTop3s) {
@@ -31,7 +31,7 @@ public class AdProvinceTop3DAOImpl implements IAdProvinceTop3DAO {
 			}
 		}
 		
-		// 根据去重后的date和province，进行批量删除操作
+		// distinct date and province,delete batch
 		String deleteSQL = "DELETE FROM ad_province_top3 WHERE date=? AND province=?";
 		
 		List<Object[]> deleteParamsList = new ArrayList<Object[]>();
@@ -47,7 +47,7 @@ public class AdProvinceTop3DAOImpl implements IAdProvinceTop3DAO {
 		
 		jdbcHelper.executeBatch(deleteSQL, deleteParamsList);
 		
-		// 批量插入传入进来的所有数据
+		// insert data
 		String insertSQL = "INSERT INTO ad_province_top3 VALUES(?,?,?,?)";  
 		
 		List<Object[]> insertParamsList = new ArrayList<Object[]>();
