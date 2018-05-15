@@ -5,14 +5,14 @@ import com.ibeifeng.sparkproject.domain.SessionAggrStat;
 import com.ibeifeng.sparkproject.jdbc.JDBCHelper;
 
 /**
- * session聚合统计DAO实现类
+ * session accumulate count
  * @author Administrator
  *
  */
 public class SessionAggrStatDAOImpl implements ISessionAggrStatDAO {
 	
 	/**
-	 * 插入session聚合统计结果
+	 * insert session aggregate count
 	 * @param sessionAggrStat 
 	 */
 	public void insert(SessionAggrStat sessionAggrStat) {
