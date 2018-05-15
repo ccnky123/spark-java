@@ -8,14 +8,14 @@ import com.ibeifeng.sparkproject.domain.SessionDetail;
 import com.ibeifeng.sparkproject.jdbc.JDBCHelper;
 
 /**
- * session明细DAO实现类
+ * session detail implement
  * @author Administrator
  *
  */
 public class SessionDetailDAOImpl implements ISessionDetailDAO {
 
 	/**
-	 * 插入一条session明细数据
+	 * 
 	 * @param sessionDetail 
 	 */
 	public void insert(SessionDetail sessionDetail) {
@@ -39,7 +39,7 @@ public class SessionDetailDAOImpl implements ISessionDetailDAO {
 	}
 	
 	/**
-	 * 批量插入session明细数据
+	 * 
 	 * @param sessionDetails
 	 */
 	public void insertBatch(List<SessionDetail> sessionDetails) {
