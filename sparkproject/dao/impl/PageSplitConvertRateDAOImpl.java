@@ -5,7 +5,7 @@ import com.ibeifeng.sparkproject.domain.PageSplitConvertRate;
 import com.ibeifeng.sparkproject.jdbc.JDBCHelper;
 
 /**
- * 页面切片转化率DAO实现类
+ * page conversion rate
  * @author Administrator
  *
  */
