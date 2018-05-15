@@ -9,14 +9,14 @@ import com.ibeifeng.sparkproject.domain.AdBlacklist;
 import com.ibeifeng.sparkproject.jdbc.JDBCHelper;
 
 /**
- * 广告黑名单DAO实现类
+ * advertisement blacklist DAO implementation class
  * @author Administrator
  *
  */
 public class AdBlacklistDAOImpl implements IAdBlacklistDAO {
 	
 	/**
-	 * 批量插入广告黑名单用户
+	 * insert Batchs of blacklist customer
 	 * @param adBlacklists
 	 */
 	public void insertBatch(List<AdBlacklist> adBlacklists) {
@@ -34,7 +34,7 @@ public class AdBlacklistDAOImpl implements IAdBlacklistDAO {
 	}
 	
 	/**
-	 * 查询所有广告黑名单用户
+	 * select all blacklist cumtomers
 	 * @return
 	 */
 	public List<AdBlacklist> findAll() {
