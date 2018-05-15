@@ -10,7 +10,7 @@ import com.ibeifeng.sparkproject.jdbc.JDBCHelper;
 import com.ibeifeng.sparkproject.model.AdStatQueryResult;
 
 /**
- * 广告实时统计DAO实现类
+ * real time advertisement count
  * @author Administrator
  *
  */
@@ -20,7 +20,7 @@ public class AdStatDAOImpl implements IAdStatDAO {
 	public void updateBatch(List<AdStat> adStats) {
 		JDBCHelper jdbcHelper = JDBCHelper.getInstance();
 		
-		// 区分开来哪些是要插入的，哪些是要更新的
+		// insert and update
 		List<AdStat> insertAdStats = new ArrayList<AdStat>();
 		List<AdStat> updateAdStats = new ArrayList<AdStat>();
 		
@@ -60,7 +60,7 @@ public class AdStatDAOImpl implements IAdStatDAO {
 			}
 		}
 		
-		// 对于需要插入的数据，执行批量插入操作
+		// 
 		String insertSQL = "INSERT INTO ad_stat VALUES(?,?,?,?,?)";  
 		
 		List<Object[]> insertParamsList = new ArrayList<Object[]>();
@@ -76,7 +76,7 @@ public class AdStatDAOImpl implements IAdStatDAO {
 		
 		jdbcHelper.executeBatch(insertSQL, insertParamsList);
 		
-		// 对于需要更新的数据，执行批量更新操作
+		// 
 		String updateSQL = "UPDATE ad_stat SET click_count=? "
 				+ "FROM ad_stat "
 				+ "WHERE date=? "
